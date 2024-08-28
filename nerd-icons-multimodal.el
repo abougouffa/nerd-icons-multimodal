@@ -26,10 +26,36 @@
 ;; This package is inspired by
 ;; - `nerd-icons-dired': https://github.com/rainstormstudio/nerd-icons-dired
 
-(require 'arc-mode)
-(require 'tar-mode)
+;;; Code:
+
 (require 'nerd-icons)
-(require 'dired)
+
+;;; Autoload externals
+
+;; dired
+(autoload 'dired-next-line "dired")
+(autoload 'dired-get-filename "dired")
+(autoload 'dired-move-to-filename "dired")
+
+;; arc-mode
+(defvar archive-file-name-indent)
+(defvar archive-file-list-start)
+(defvar archive-files)
+(autoload 'archive-next-line "arc-mode")
+(autoload 'archive-get-lineno "arc-mode")
+(autoload 'archive--file-desc-int-file-name "arc-mode")
+
+;; tar-mode
+(autoload 'tar-next-line "tar-mode")
+(autoload 'tar-header-name "tar-mode")
+(autoload 'tar-current-descriptor "tar-mode")
+
+(defgroup nerd-icons-multimodal nil
+  "Shows icons for each file in several Emacs modes.
+Currently supporting `dired', `arc-mode' and `tar-mode'."
+  :group 'files)
+
+(defvar nerd-icons-multimodal-mode)
 
 (defface nerd-icons-multimodal-dir-face
   '((t nil))
@@ -42,22 +68,15 @@
   :type 'number)
 
 (defcustom nerd-icons-multimodal-refresh-commands
-  '(tar-new-entry
-    tar-rename-entry
-    tar-expunge
-    archive-resummarize
-    archive-mode
-    tar-mode
-    dired-readin
-    dired-revert
-    dired-internal-do-deletions
-    dired-insert-subdir
-    dired-create-directory
-    dired-do-redisplay
-    dired-kill-subdir
-    dired-do-kill-lines
-    dired-narrow--internal ; dired-narrow
-    dired-subtree-toggle) ; dired-subtree
+  '(;; dired
+    dired-readin dired-revert dired-internal-do-deletions dired-insert-subdir
+    dired-create-directory dired-do-redisplay dired-kill-subdir dired-do-kill-lines
+    ;; tar-mode
+    tar-new-entry tar-rename-entry tar-expunge tar-mode
+    ;; arc-mode
+    archive-resummarize archive-mode
+    ;; dired-hacks
+    dired-narrow--internal dired-subtree-toggle)
   "Refresh the buffer icons when executing these commands."
   :group 'nerd-icons
   :type '(repeat function))
@@ -71,8 +90,7 @@
 (defun nerd-icons-multimodal--overlays-in (beg end)
   "Get all nerd-icons-multimodal overlays between BEG to END."
   (cl-remove-if-not
-   (lambda (ov)
-     (overlay-get ov 'nerd-icons-multimodal-overlay))
+   (lambda (ov) (overlay-get ov 'nerd-icons-multimodal-overlay))
    (overlays-in beg end)))
 
 (defun nerd-icons-multimodal--overlays-at (pos)
@@ -83,14 +101,12 @@
   "Remove all `nerd-icons-multimodal' overlays."
   (save-restriction
     (widen)
-    (mapc #'delete-overlay
-          (nerd-icons-multimodal--overlays-in (point-min) (point-max)))))
+    (mapc #'delete-overlay (nerd-icons-multimodal--overlays-in (point-min) (point-max)))))
 
-(defun nerd-icons-multimodal--get-descriptor ()
+(defun nerd-icons-multimodal--archive-get-descriptor ()
   "Like `archive-get-descr' but simpler."
   (let ((no (archive-get-lineno)))
-    (when (and (>= (point) archive-file-list-start)
-               (< no (length archive-files)))
+    (when (and (>= (point) archive-file-list-start) (length> archive-files no))
       (aref archive-files no))))
 
 (defvar nerd-icons-multimodal-functions-alist
@@ -99,7 +115,7 @@
       (tar-mode . tar-next-line)
       (dired-mode . dired-next-line)))
     (filename-at-pt .
-     ((archive-mode . ,(lambda () (when-let* ((descr (nerd-icons-multimodal--get-descriptor)) (name (archive--file-desc-int-file-name descr))) name)))
+     ((archive-mode . ,(lambda () (when-let* ((descr (nerd-icons-multimodal--archive-get-descriptor)) (name (archive--file-desc-int-file-name descr))) name)))
       (tar-mode . ,(lambda () (when-let* ((descr (ignore-errors (tar-current-descriptor))) (name (tar-header-name descr))) name)))
       (dired-mode . ,(lambda () (dired-get-filename 'relative 'noerror)))))
     (move-to-filename .
@@ -176,6 +192,7 @@
 (define-minor-mode nerd-icons-multimodal-mode
   "Display nerd-icons icon for each files in a archive buffer."
   :lighter " nerd-icons-multimodal-mode"
+  :group 'nerd-icons-multimodal
   :global t
   (if nerd-icons-multimodal-mode (nerd-icons-multimodal--setup) (nerd-icons-multimodal--teardown)))
 
