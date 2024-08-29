@@ -68,18 +68,16 @@ Currently supporting `dired', `arc-mode' and `tar-mode'."
   :type 'number)
 
 (defcustom nerd-icons-multimodal-refresh-commands
-  '(;; dired
-    dired-readin dired-revert dired-internal-do-deletions dired-insert-subdir
-    dired-create-directory dired-do-redisplay dired-kill-subdir dired-do-kill-lines
-    ;; tar-mode
-    tar-new-entry tar-rename-entry tar-expunge tar-mode
-    ;; arc-mode
-    archive-resummarize archive-mode
-    ;; dired-hacks
-    dired-narrow--internal dired-subtree-toggle)
+  '((dired . (dired-readin dired-revert dired-internal-do-deletions dired-insert-subdir
+              dired-create-directory dired-do-redisplay dired-kill-subdir dired-do-kill-lines))
+    (wdired . (wdired-abort-changes))
+    (tar-mode . (tar-mode tar-new-entry tar-rename-entry tar-expunge))
+    (arc-mode . (archive-summarize))
+    (dired-narrow . (dired-narrow--internal))
+    (dired-subtree . (dired-subtree-toggle)))
   "Refresh the buffer icons when executing these commands."
   :group 'nerd-icons
-  :type '(repeat function))
+  :type '(list (cons (choice symbol string) (repeat function))))
 
 (defun nerd-icons-multimodal--add-overlay (pos string)
   "Add overlay to display STRING at POS."
@@ -123,12 +121,14 @@ Currently supporting `dired', `arc-mode' and `tar-mode'."
       (tar-mode . ,(lambda () (goto-char (line-beginning-position)) (goto-char (or (next-single-property-change (point) 'mouse-face) (point))) (point)))
       (dired-mode . ,(lambda () (dired-move-to-filename nil) (point)))))))
 
-(defun nerd-icons-multimodal--call (sym &rest args)
-  (if-let* ((func (alist-get major-mode (alist-get sym nerd-icons-multimodal-functions-alist))))
+(defun nerd-icons-multimodal--call (func &rest args)
+  "Call FUNC with ARGS based on the current major mode."
+  (if-let* ((func (alist-get major-mode (alist-get func nerd-icons-multimodal-functions-alist))))
       (apply func args)
-    (user-error "Mode `%s' doesn't have a `%s' function defined in `nerd-icons-multimodal-functions-alist'" major-mode sym)))
+    (user-error "Mode `%s' doesn't have a `%s' function defined in `nerd-icons-multimodal-functions-alist'" major-mode func)))
 
 (defun nerd-icons-multimodal--supported-mode-p ()
+  "Return non-nil if the current mode is supported by `nerd-icons-multimodal'."
   (and (alist-get major-mode (alist-get 'next-line nerd-icons-multimodal-functions-alist)) t))
 
 (defun nerd-icons-multimodal--refresh ()
@@ -161,25 +161,16 @@ Currently supporting `dired', `arc-mode' and `tar-mode'."
 (defun nerd-icons-multimodal--setup ()
   "Setup `nerd-icons-multimodal'."
   (setq-local tab-width 1)
-  (dolist (cmd nerd-icons-multimodal-refresh-commands)
-    (advice-add cmd :around #'nerd-icons-multimodal--refresh-advice))
-
-  ;; Refresh already open buffers
-  (dolist (buffer (buffer-list))
-    (with-current-buffer buffer
-      (when (nerd-icons-multimodal--supported-mode-p)
-        (nerd-icons-multimodal--refresh)))))
+  (dolist (pkg-cmd nerd-icons-multimodal-refresh-commands)
+    (with-eval-after-load (car pkg-cmd)
+      (dolist (cmd (cdr pkg-cmd))
+        (advice-add cmd :around #'nerd-icons-multimodal--refresh-advice)))))
 
 (defun nerd-icons-multimodal--teardown ()
   "Functions used as advice when redisplaying buffer."
-  (dolist (cmd nerd-icons-multimodal-refresh-commands)
-    (advice-remove cmd #'nerd-icons-multimodal--refresh))
-
-  ;; Refresh already open buffers
-  (dolist (buffer (buffer-list))
-    (with-current-buffer buffer
-      (when (nerd-icons-multimodal--supported-mode-p)
-        (nerd-icons-multimodal--remove-all-overlays)))))
+  (dolist (pkg-cmd nerd-icons-multimodal-refresh-commands)
+    (dolist (cmd (cdr pkg-cmd))
+      (advice-remove cmd #'nerd-icons-multimodal--refresh-advice))))
 
 (defun nerd-icons-multimodal-refresh ()
   "Refresh the icons in the current buffer."
@@ -191,10 +182,26 @@ Currently supporting `dired', `arc-mode' and `tar-mode'."
 ;;;###autoload
 (define-minor-mode nerd-icons-multimodal-mode
   "Display nerd-icons icon for each files in a archive buffer."
-  :lighter " nerd-icons-multimodal-mode"
+  :lighter " nerd-icons-mm"
   :group 'nerd-icons-multimodal
-  :global t
-  (if nerd-icons-multimodal-mode (nerd-icons-multimodal--setup) (nerd-icons-multimodal--teardown)))
+  :global nil
+  (if nerd-icons-multimodal-mode
+      (nerd-icons-multimodal--setup)
+    (nerd-icons-multimodal--teardown)))
+
+(defun nerd-icons-multimodal--turn-on ()
+  (when (nerd-icons-multimodal--supported-mode-p)
+    (nerd-icons-multimodal-mode 1)))
+
+;;;###autoload
+(define-globalized-minor-mode global-nerd-icons-multimodal-mode nerd-icons-multimodal-mode nerd-icons-multimodal--turn-on
+  ;; Refresh already open buffers
+  (dolist (buffer (buffer-list))
+    (with-current-buffer buffer
+      (when (nerd-icons-multimodal--supported-mode-p)
+        (if global-nerd-icons-multimodal-mode
+            (nerd-icons-multimodal-mode 1)
+          (nerd-icons-multimodal-mode -1))))))
 
 
 (provide 'nerd-icons-multimodal)
