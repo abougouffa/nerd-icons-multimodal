@@ -1,35 +1,32 @@
-#+title: nerd-icons-arhive - Use nerd-icons for archive-mode and tar-mode
+#+title: nerd-icons-multimodal - Use nerd-icons for dired-mode, archive-mode and tar-mode
 #+author: Abdelhak Bougouffa
 #+language: en
 
 * Usage
-Add ~nerd-icons-archive~ to the ~load-path~
+
+To enable globally, add ~nerd-icons-multimodal~ to the ~load-path~ then:
 
 #+begin_src emacs-lisp
-(add-to-list 'load-path "path/to/nerd-icons-archive")
-(require 'nerd-icons-archive)
-(nerd-icons-archive-mode 1)
+(add-to-list 'load-path "path/to/nerd-icons-multimodal")
+(require 'nerd-icons-multimodal)
+(global-nerd-icons-multimodal-mode 1)
 #+end_src
 
 Or using ~use-package~ and ~straight~:
 
-
 #+begin_src emacs-lisp
-(use-package nerd-icons-archive
-  :straight (:host github :repo "abougouffa/nerd-icons-archive")
+(use-package nerd-icons-multimodal
+  :straight (:host github :repo "abougouffa/nerd-icons-multimodal")
   :init
-  (nerd-icons-archive-mode 1))
+  (global-nerd-icons-multimodal-mode 1))
 #+end_src
 
-Or, the recommended way, by deferring the activation of ~nerd-icons-archive-mode~ until necessary:
+Or, the recommended way, by deferring the activation of ~nerd-icons-multimodal-mode~ until necessary:
 
 #+begin_src emacs-lisp
-(use-package nerd-icons-archive
-  :straight (:host github :repo "abougouffa/nerd-icons-archive")
-  ;; Should be after `tar-mode' or `arc-mode', but `arc-mode' is enough since it is required by the other
-  :after arc-mode
-  :init
-  (nerd-icons-archive-mode 1))
+(use-package nerd-icons-multimodal
+  :straight (:host github :repo "abougouffa/nerd-icons-multimodal")
+  :hook ((archive-mode tar-mode dired-mode) . nerd-icons-multimodal-mode))
 #+end_src
 
 * Screenshot
