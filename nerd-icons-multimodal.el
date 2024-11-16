@@ -170,15 +170,13 @@ Currently supporting `dired', `arc-mode' and `tar-mode'."
 (defun nerd-icons-multimodal--setup ()
   "Setup `nerd-icons-multimodal'."
   (setq-local tab-width 1)
-  (dolist (pkg-cmd nerd-icons-multimodal-refresh-commands)
-    (dolist (cmd (cdr pkg-cmd))
-      (advice-add cmd :around #'nerd-icons-multimodal--refresh-advice))))
+  (dolist (cmd nerd-icons-multimodal-refresh-commands)
+    (advice-add cmd :around #'nerd-icons-multimodal--refresh-advice)))
 
 (defun nerd-icons-multimodal--teardown ()
   "Functions used as advice when redisplaying buffer."
-  (dolist (pkg-cmd nerd-icons-multimodal-refresh-commands)
-    (dolist (cmd (cdr pkg-cmd))
-      (advice-remove cmd #'nerd-icons-multimodal--refresh-advice))))
+  (dolist (cmd nerd-icons-multimodal-refresh-commands)
+    (advice-remove cmd #'nerd-icons-multimodal--refresh-advice)))
 
 (defun nerd-icons-multimodal-refresh ()
   "Refresh the icons in the current buffer."
