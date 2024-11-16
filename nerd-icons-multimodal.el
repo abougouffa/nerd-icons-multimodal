@@ -140,17 +140,18 @@ Currently supporting `dired', `arc-mode' and `tar-mode'."
       (while (and (not (eobp)) (> (line-number-at-pos) prev-line)) ; break when we wrap to the first line
         (setq prev-line (line-number-at-pos))
         (when-let ((name (nerd-icons-multimodal--call 'filename-at-pt)))
-          (let ((icon (if (or (string-suffix-p "/" name)
-                              (and (eq major-mode 'dired-mode) (file-directory-p name)))
-                          (nerd-icons-icon-for-dir name
-                                                   :weight 'regular
-                                                   :face 'nerd-icons-multimodal-dir-face
-                                                   :v-adjust nerd-icons-multimodal-v-adjust)
-                        (nerd-icons-icon-for-file name :weight 'regular :v-adjust nerd-icons-multimodal-v-adjust)))
+          (let ((icon
+                 (cond
+                  ((equal name ".") (nerd-icons-faicon "nf-fa-circle_dot"))
+                  ((equal name "..") (nerd-icons-faicon "nf-fa-arrow_circle_o_up"))
+
+                  ((or (string-suffix-p "/" name) (and (eq major-mode 'dired-mode) (file-directory-p name)))
+                   (nerd-icons-icon-for-dir
+                    name :weight 'regular :face 'nerd-icons-multimodal-dir-face
+                    :v-adjust nerd-icons-multimodal-v-adjust))
+                  (t (nerd-icons-icon-for-file name :weight 'regular :v-adjust nerd-icons-multimodal-v-adjust))))
                 (inhibit-read-only t))
-            (if (member name '("." ".."))
-                (nerd-icons-multimodal--add-overlay (nerd-icons-multimodal--call 'move-to-filename) "  \t")
-              (nerd-icons-multimodal--add-overlay (nerd-icons-multimodal--call 'move-to-filename) (concat icon "\t")))))
+            (nerd-icons-multimodal--add-overlay (nerd-icons-multimodal--call 'move-to-filename) (concat icon "\t"))))
         (nerd-icons-multimodal--call 'next-line 1)))))
 
 (defun nerd-icons-multimodal--refresh-advice (fn &rest args)
