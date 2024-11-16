@@ -124,7 +124,7 @@ Currently supporting `dired', `arc-mode' and `tar-mode'."
 (defun nerd-icons-multimodal--call (func &rest args)
   "Call FUNC with ARGS based on the current major mode."
   (if-let* ((func (alist-get major-mode (alist-get func nerd-icons-multimodal-functions-alist))))
-      (apply func args)
+      (apply #'funcall-interactively (cons func args))
     (user-error "Mode `%s' doesn't have a `%s' function defined in `nerd-icons-multimodal-functions-alist'" major-mode func)))
 
 (defun nerd-icons-multimodal--supported-mode-p ()
