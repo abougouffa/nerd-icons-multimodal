@@ -68,16 +68,22 @@ Currently supporting `dired', `arc-mode' and `tar-mode'."
   :type 'number)
 
 (defcustom nerd-icons-multimodal-refresh-commands
-  '((dired . (dired-readin dired-revert dired-internal-do-deletions dired-insert-subdir
-              dired-create-directory dired-do-redisplay dired-kill-subdir dired-do-kill-lines))
-    (wdired . (wdired-abort-changes))
-    (tar-mode . (tar-mode tar-new-entry tar-rename-entry tar-expunge))
-    (arc-mode . (archive-summarize))
-    (dired-narrow . (dired-narrow--internal))
-    (dired-subtree . (dired-subtree-toggle)))
+  '(;; dired
+    dired-readin dired-revert dired-internal-do-deletions dired-insert-subdir
+    dired-create-directory dired-do-redisplay dired-kill-subdir dired-do-kill-lines
+    ;; wdired
+    wdired-abort-changes
+    ;; tar-mode
+    tar-mode tar-new-entry tar-rename-entry tar-expunge
+    ;; arc-mode
+    archive-summarize
+    ;; dired-narrow
+    dired-narrow--internal
+    ;; dired-subtree
+    dired-subtree-toggle)
   "Refresh the buffer icons when executing these commands."
   :group 'nerd-icons
-  :type '(list (cons (choice symbol string) (repeat function))))
+  :type '(repeat function))
 
 (defun nerd-icons-multimodal--add-overlay (pos string)
   "Add overlay to display STRING at POS."
@@ -165,9 +171,8 @@ Currently supporting `dired', `arc-mode' and `tar-mode'."
   "Setup `nerd-icons-multimodal'."
   (setq-local tab-width 1)
   (dolist (pkg-cmd nerd-icons-multimodal-refresh-commands)
-    (with-eval-after-load (car pkg-cmd)
-      (dolist (cmd (cdr pkg-cmd))
-        (advice-add cmd :around #'nerd-icons-multimodal--refresh-advice)))))
+    (dolist (cmd (cdr pkg-cmd))
+      (advice-add cmd :around #'nerd-icons-multimodal--refresh-advice))))
 
 (defun nerd-icons-multimodal--teardown ()
   "Functions used as advice when redisplaying buffer."
