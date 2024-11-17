@@ -1,6 +1,13 @@
-#+title: nerd-icons-multimodal - Use nerd-icons for dired-mode, archive-mode and tar-mode
+#+title: nerd-icons-multimodal - Use nerd-icons for several modes
 #+author: Abdelhak Bougouffa
 #+language: en
+
+* Supported modes/packages
+
+- dired
+- archive-mode
+- tar-mode
+- ztree
 
 * Usage
 

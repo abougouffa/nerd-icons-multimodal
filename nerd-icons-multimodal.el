@@ -1,4 +1,4 @@
-;;; nerd-icons-multimodal.el --- Shows icons for each file in several Emacs modes, including dired-mode, archive-mode and tar-mode -*- lexical-binding: t -*-
+;;; nerd-icons-multimodal.el --- Shows icons for each file in several modes -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2024 Abdelhak Bougouffa <abougouffa@fedoraproject.org>
 
@@ -160,6 +160,25 @@ Currently supporting `dired', `arc-mode' and `tar-mode'."
             (nerd-icons-multimodal--add-overlay (nerd-icons-multimodal--call 'move-to-filename) (concat icon "\t"))))
         (nerd-icons-multimodal--call 'next-line 1)))))
 
+(defun nerd-icons-multimodal--ztree-insert-single-entry-advice (fn short-name depth expandable expanded offset count-children &optional face)
+  (let* ((empty-short-name (string-empty-p short-name))
+         (icon (if empty-short-name
+                   ;; Draw an invisible icon to keep the columns balanced
+                   (nerd-icons-octicon
+                    "nf-oct-dot"
+                    :face (custom-declare-face ; define a face with the same color as the background (invisible)
+                           'nerd-icons-multimodal--ztree-invisible-color
+                           `((((background dark)) :foreground ,(face-background 'default))
+                             (((background light)) :foreground ,(face-background 'default)))
+                           "Face for invisible icons."))
+                 (if expandable
+                     (if expanded
+                         (nerd-icons-mdicon "nf-md-folder_open")
+                       (nerd-icons-mdicon "nf-md-folder"))
+                   (nerd-icons-icon-for-file short-name :weight 'regular :v-adjust nerd-icons-multimodal-v-adjust)))))
+    (funcall fn (concat icon " " (if empty-short-name " " short-name))
+             depth expandable expanded offset count-children face)))
+
 (defun nerd-icons-multimodal--refresh-advice (fn &rest args)
   "Advice function for FN with ARGS."
   (let ((result (apply fn args))) ;; Save the result of the advised function
@@ -171,12 +190,15 @@ Currently supporting `dired', `arc-mode' and `tar-mode'."
   "Setup `nerd-icons-multimodal'."
   (setq-local tab-width 1)
   (dolist (cmd nerd-icons-multimodal-refresh-commands)
-    (advice-add cmd :around #'nerd-icons-multimodal--refresh-advice)))
+    (advice-add cmd :around #'nerd-icons-multimodal--refresh-advice))
+  ;; For `ztree' support
+  (advice-add 'ztree-insert-single-entry :around #'nerd-icons-multimodal--ztree-insert-single-entry-advice))
 
 (defun nerd-icons-multimodal--teardown ()
   "Functions used as advice when redisplaying buffer."
   (dolist (cmd nerd-icons-multimodal-refresh-commands)
-    (advice-remove cmd #'nerd-icons-multimodal--refresh-advice)))
+    (advice-remove cmd #'nerd-icons-multimodal--refresh-advice))
+  (advice-remove 'ztree-insert-single-entry #'nerd-icons-multimodal--ztree-insert-single-entry-advice))
 
 (defun nerd-icons-multimodal-refresh ()
   "Refresh the icons in the current buffer."
