@@ -71,6 +71,7 @@ Currently supporting `dired', `arc-mode' and `tar-mode'."
   '(;; dired
     dired-readin dired-revert dired-internal-do-deletions dired-insert-subdir
     dired-create-directory dired-do-redisplay dired-kill-subdir dired-do-kill-lines
+    dired-post-do-command
     ;; wdired
     wdired-abort-changes
     ;; tar-mode
