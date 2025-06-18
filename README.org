@@ -5,6 +5,7 @@
 * Supported modes/packages
 
 - dired
+- vc-dir
 - archive-mode
 - tar-mode
 - ztree
