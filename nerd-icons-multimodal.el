@@ -1,6 +1,6 @@
 ;;; nerd-icons-multimodal.el --- Shows icons for each file in several modes -*- lexical-binding: t -*-
 
-;; Copyright (C) 2024 Abdelhak Bougouffa <abougouffa@fedoraproject.org>
+;; Copyright (C) 2024-2025 Abdelhak Bougouffa <abougouffa@fedoraproject.org>
 
 ;; Author: Abdelhak Bougouffa <abougouffa@fedoraproject.org>
 ;; Version: 2.1.0
@@ -146,12 +146,11 @@ Currently supporting `dired', `arc-mode' and `tar-mode'."
     (let ((prev-line (1- (line-number-at-pos))))
       (while (and (not (eobp)) (> (line-number-at-pos) prev-line)) ; break when we wrap to the first line
         (setq prev-line (line-number-at-pos))
-        (when-let ((name (nerd-icons-multimodal--call 'filename-at-pt)))
+        (when-let* ((name (nerd-icons-multimodal--call 'filename-at-pt)))
           (let ((icon
                  (cond
                   ((equal name ".") (nerd-icons-faicon "nf-fa-circle_dot"))
                   ((equal name "..") (nerd-icons-faicon "nf-fa-arrow_circle_o_up"))
-
                   ((or (string-suffix-p "/" name) (and (eq major-mode 'dired-mode) (file-directory-p name)))
                    (nerd-icons-icon-for-dir
                     name :weight 'regular :face 'nerd-icons-multimodal-dir-face
@@ -182,10 +181,9 @@ Currently supporting `dired', `arc-mode' and `tar-mode'."
 
 (defun nerd-icons-multimodal--refresh-advice (fn &rest args)
   "Advice function for FN with ARGS."
-  (let ((result (apply fn args))) ;; Save the result of the advised function
+  (prog1 (apply fn args)
     (when nerd-icons-multimodal-mode
-      (nerd-icons-multimodal--refresh))
-    result)) ;; Return the result
+      (nerd-icons-multimodal--refresh))))
 
 (defun nerd-icons-multimodal--setup ()
   "Setup `nerd-icons-multimodal'."
