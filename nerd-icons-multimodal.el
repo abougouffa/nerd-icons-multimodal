@@ -30,25 +30,11 @@
 
 (require 'nerd-icons)
 
-;;; Autoload externals
-
-;; dired
-(autoload 'dired-next-line "dired")
-(autoload 'dired-get-filename "dired")
-(autoload 'dired-move-to-filename "dired")
-
-;; arc-mode
-(defvar archive-file-name-indent)
-(defvar archive-file-list-start)
-(defvar archive-files)
-(autoload 'archive-next-line "arc-mode")
-(autoload 'archive-get-lineno "arc-mode")
-(autoload 'archive--file-desc-int-file-name "arc-mode")
-
-;; tar-mode
-(autoload 'tar-next-line "tar-mode")
-(autoload 'tar-header-name "tar-mode")
-(autoload 'tar-current-descriptor "tar-mode")
+(eval-when-compile
+  (require 'dired)
+  (require 'arc-mode)
+  (require 'tar-mode)
+  (require 'vc-dir))
 
 (defgroup nerd-icons-multimodal nil
   "Shows icons for each file in several Emacs modes.
