@@ -81,7 +81,9 @@ Currently supporting `dired', `arc-mode' and `tar-mode'."
     ;; dired-narrow
     dired-narrow--internal
     ;; dired-subtree
-    dired-subtree-toggle)
+    dired-subtree-toggle
+    ;; vc-dir
+    vc-dir-update)
   "Refresh the buffer icons when executing these commands."
   :group 'nerd-icons
   :type '(repeat function))
@@ -115,18 +117,24 @@ Currently supporting `dired', `arc-mode' and `tar-mode'."
       (aref archive-files no))))
 
 (defvar nerd-icons-multimodal-functions-alist
-  `((next-line .
+  `((next-line
+     .
      ((archive-mode . archive-next-line)
       (tar-mode . tar-next-line)
-      (dired-mode . dired-next-line)))
-    (filename-at-pt .
+      (dired-mode . dired-next-line)
+      (vc-dir-mode . vc-dir-next-line)))
+    (filename-at-pt
+     .
      ((archive-mode . ,(lambda () (when-let* ((descr (nerd-icons-multimodal--archive-get-descriptor)) (name (archive--file-desc-int-file-name descr))) name)))
       (tar-mode . ,(lambda () (when-let* ((descr (ignore-errors (tar-current-descriptor))) (name (tar-header-name descr))) name)))
-      (dired-mode . ,(lambda () (dired-get-filename 'relative 'noerror)))))
-    (move-to-filename .
+      (dired-mode . ,(lambda () (dired-get-filename 'relative 'noerror)))
+      (vc-dir-mode . vc-dir-current-file)))
+    (move-to-filename
+     .
      ((archive-mode . ,(lambda () (goto-char (line-beginning-position)) (forward-char archive-file-name-indent) (point)))
       (tar-mode . ,(lambda () (goto-char (line-beginning-position)) (goto-char (or (next-single-property-change (point) 'mouse-face) (point))) (point)))
-      (dired-mode . ,(lambda () (dired-move-to-filename nil) (point)))))))
+      (dired-mode . ,(lambda () (dired-move-to-filename nil) (point)))
+      (vc-dir-mode . ,(lambda () (vc-dir-move-to-goal-column) (point)))))))
 
 (defun nerd-icons-multimodal--call (func &rest args)
   "Call FUNC with ARGS based on the current major mode."
@@ -143,21 +151,25 @@ Currently supporting `dired', `arc-mode' and `tar-mode'."
   (nerd-icons-multimodal--remove-all-overlays)
   (save-excursion
     (goto-char (point-min))
-    (let ((prev-line (1- (line-number-at-pos))))
+    (nerd-icons-multimodal--call 'next-line 0) ; To ensure jumping to the first filename (in `vc-dir')
+    (let ((prev-line (1- (line-number-at-pos)))
+          (prev-name nil))
       (while (and (not (eobp)) (> (line-number-at-pos) prev-line)) ; break when we wrap to the first line
         (setq prev-line (line-number-at-pos))
         (when-let* ((name (nerd-icons-multimodal--call 'filename-at-pt)))
-          (let ((icon
-                 (cond
-                  ((equal name ".") (nerd-icons-faicon "nf-fa-circle_dot"))
-                  ((equal name "..") (nerd-icons-faicon "nf-fa-arrow_circle_o_up"))
-                  ((or (string-suffix-p "/" name) (and (eq major-mode 'dired-mode) (file-directory-p name)))
-                   (nerd-icons-icon-for-dir
-                    name :weight 'regular :face 'nerd-icons-multimodal-dir-face
-                    :v-adjust nerd-icons-multimodal-v-adjust))
-                  (t (nerd-icons-icon-for-file name :weight 'regular :v-adjust nerd-icons-multimodal-v-adjust))))
-                (inhibit-read-only t))
-            (nerd-icons-multimodal--add-overlay (nerd-icons-multimodal--call 'move-to-filename) (concat icon "\t"))))
+          (unless (equal name prev-name) ; In `vc-dir', empty lines can give the filename of the previous line
+            (let ((icon
+                   (cond
+                    ((equal name ".") (nerd-icons-faicon "nf-fa-circle_dot"))
+                    ((equal name "..") (nerd-icons-faicon "nf-fa-arrow_circle_o_up"))
+                    ((or (string-suffix-p "/" name) (and (eq major-mode 'dired-mode) (file-directory-p name)))
+                     (nerd-icons-icon-for-dir
+                      name :weight 'regular :face 'nerd-icons-multimodal-dir-face
+                      :v-adjust nerd-icons-multimodal-v-adjust))
+                    (t (nerd-icons-icon-for-file name :weight 'regular :v-adjust nerd-icons-multimodal-v-adjust))))
+                  (inhibit-read-only t))
+              (nerd-icons-multimodal--add-overlay (nerd-icons-multimodal--call 'move-to-filename) (concat icon "\t"))))
+          (setq prev-name name))
         (nerd-icons-multimodal--call 'next-line 1)))))
 
 (defun nerd-icons-multimodal--ztree-insert-single-entry-advice (fn short-name depth expandable expanded offset count-children &optional face)
