@@ -86,10 +86,6 @@ Currently supporting `dired', `arc-mode' and `tar-mode'."
    (lambda (ov) (overlay-get ov 'nerd-icons-multimodal-overlay))
    (overlays-in beg end)))
 
-(defun nerd-icons-multimodal--overlays-at (pos)
-  "Get nerd-icons-multimodal overlays at POS."
-  (apply #'nerd-icons-multimodal--overlays-in `(,pos ,pos)))
-
 (defun nerd-icons-multimodal--remove-all-overlays ()
   "Remove all `nerd-icons-multimodal' overlays."
   (save-restriction
@@ -130,33 +126,39 @@ Currently supporting `dired', `arc-mode' and `tar-mode'."
 
 (defun nerd-icons-multimodal--supported-mode-p ()
   "Return non-nil if the current mode is supported by `nerd-icons-multimodal'."
-  (and (alist-get major-mode (alist-get 'next-line nerd-icons-multimodal-functions-alist)) t))
+  (or (nerd-icons-multimodal--generic-p) (memq major-mode '(ztree-mode))))
+
+(defun nerd-icons-multimodal--generic-p ()
+  "Return non-nil if `major-mode' is supported via the generic `nerd-icons-multimodal-functions-alist' implementation."
+  (memq major-mode (mapcar #'car (alist-get 'next-line nerd-icons-multimodal-functions-alist))))
 
 (defun nerd-icons-multimodal--refresh ()
   "Display the icons of files in a archive buffer."
-  (nerd-icons-multimodal--remove-all-overlays)
-  (save-excursion
-    (goto-char (point-min))
-    (nerd-icons-multimodal--call 'next-line 0) ; To ensure jumping to the first filename (in `vc-dir')
-    (let ((prev-line (1- (line-number-at-pos)))
-          (prev-name nil))
-      (while (and (not (eobp)) (> (line-number-at-pos) prev-line)) ; break when we wrap to the first line
-        (setq prev-line (line-number-at-pos))
-        (when-let* ((name (nerd-icons-multimodal--call 'filename-at-pt)))
-          (unless (equal name prev-name) ; In `vc-dir', empty lines can give the filename of the previous line
-            (let ((icon
-                   (cond
-                    ((equal name ".") (nerd-icons-faicon "nf-fa-circle_dot"))
-                    ((equal name "..") (nerd-icons-faicon "nf-fa-arrow_circle_o_up"))
-                    ((or (string-suffix-p "/" name) (and (eq major-mode 'dired-mode) (file-directory-p name)))
-                     (nerd-icons-icon-for-dir
-                      name :weight 'regular :face 'nerd-icons-multimodal-dir-face
-                      :v-adjust nerd-icons-multimodal-v-adjust))
-                    (t (nerd-icons-icon-for-file name :weight 'regular :v-adjust nerd-icons-multimodal-v-adjust))))
-                  (inhibit-read-only t))
-              (nerd-icons-multimodal--add-overlay (nerd-icons-multimodal--call 'move-to-filename) (concat icon "\t"))))
-          (setq prev-name name))
-        (nerd-icons-multimodal--call 'next-line 1)))))
+  (when (nerd-icons-multimodal--generic-p)
+    (nerd-icons-multimodal--remove-all-overlays)
+    (when nerd-icons-multimodal-mode
+      (save-excursion
+        (goto-char (point-min))
+        (nerd-icons-multimodal--call 'next-line 0) ; To ensure jumping to the first filename (in `vc-dir')
+        (let ((prev-line (1- (line-number-at-pos)))
+              (prev-name nil))
+          (while (and (not (eobp)) (> (line-number-at-pos) prev-line)) ; break when we wrap to the first line
+            (setq prev-line (line-number-at-pos))
+            (when-let* ((name (nerd-icons-multimodal--call 'filename-at-pt)))
+              (unless (equal name prev-name) ; In `vc-dir', empty lines can give the filename of the previous line
+                (let ((icon
+                       (cond
+                        ((equal name ".") (nerd-icons-faicon "nf-fa-circle_dot"))
+                        ((equal name "..") (nerd-icons-faicon "nf-fa-arrow_circle_o_up"))
+                        ((or (string-suffix-p "/" name) (and (eq major-mode 'dired-mode) (file-directory-p name)))
+                         (nerd-icons-icon-for-dir
+                          name :weight 'regular :face 'nerd-icons-multimodal-dir-face
+                          :v-adjust nerd-icons-multimodal-v-adjust))
+                        (t (nerd-icons-icon-for-file name :weight 'regular :v-adjust nerd-icons-multimodal-v-adjust))))
+                      (inhibit-read-only t))
+                  (nerd-icons-multimodal--add-overlay (nerd-icons-multimodal--call 'move-to-filename) (concat icon "\t"))))
+              (setq prev-name name))
+            (nerd-icons-multimodal--call 'next-line 1)))))))
 
 (defun nerd-icons-multimodal--ztree-insert-single-entry-advice (fn short-name depth expandable expanded offset count-children &optional face)
   (let* ((empty-short-name (string-empty-p short-name))
@@ -174,14 +176,15 @@ Currently supporting `dired', `arc-mode' and `tar-mode'."
                          (nerd-icons-mdicon "nf-md-folder_open")
                        (nerd-icons-mdicon "nf-md-folder"))
                    (nerd-icons-icon-for-file short-name :weight 'regular :v-adjust nerd-icons-multimodal-v-adjust)))))
-    (funcall fn (concat icon " " (if empty-short-name " " short-name))
+    (funcall fn (if nerd-icons-multimodal-mode
+                    (concat icon " " (if empty-short-name " " short-name))
+                  short-name)
              depth expandable expanded offset count-children face)))
 
 (defun nerd-icons-multimodal--refresh-advice (fn &rest args)
   "Advice function for FN with ARGS."
   (prog1 (apply fn args)
-    (when nerd-icons-multimodal-mode
-      (nerd-icons-multimodal--refresh))))
+    (nerd-icons-multimodal--refresh)))
 
 (defun nerd-icons-multimodal--setup ()
   "Setup `nerd-icons-multimodal'."
@@ -191,8 +194,8 @@ Currently supporting `dired', `arc-mode' and `tar-mode'."
   ;; For `ztree' support
   (advice-add 'ztree-insert-single-entry :around #'nerd-icons-multimodal--ztree-insert-single-entry-advice))
 
-(defun nerd-icons-multimodal--teardown ()
-  "Functions used as advice when redisplaying buffer."
+(defun nerd-icons-multimodal-teardown-globally ()
+  "Rmove all advices."
   (dolist (cmd nerd-icons-multimodal-refresh-commands)
     (advice-remove cmd #'nerd-icons-multimodal--refresh-advice))
   (advice-remove 'ztree-insert-single-entry #'nerd-icons-multimodal--ztree-insert-single-entry-advice))
@@ -201,10 +204,8 @@ Currently supporting `dired', `arc-mode' and `tar-mode'."
   "Refresh the icons in the current buffer."
   (interactive)
   (if (nerd-icons-multimodal--supported-mode-p)
-      (if nerd-icons-multimodal-mode
-          (nerd-icons-multimodal--refresh)
-        (user-error "`nerd-icons-multimodal-mode' isn't enabled in the current buffer"))
-    (user-error "Not in a supported major-mode")))
+      (nerd-icons-multimodal--refresh)
+    (user-error "`nerd-icons-multimodal-mode' don't support `%S'" major-mode)))
 
 ;;;###autoload
 (define-minor-mode nerd-icons-multimodal-mode
@@ -212,9 +213,12 @@ Currently supporting `dired', `arc-mode' and `tar-mode'."
   :lighter " nerd-icons-mm"
   :group 'nerd-icons-multimodal
   :global nil
-  (if nerd-icons-multimodal-mode
-      (nerd-icons-multimodal--setup)
-    (nerd-icons-multimodal--teardown)))
+  (if (nerd-icons-multimodal--supported-mode-p)
+      (progn
+        (when nerd-icons-multimodal-mode (nerd-icons-multimodal--setup))
+        (when (interactive-p) (nerd-icons-multimodal--refresh)))
+    (setq nerd-icons-multimodal-mode nil)
+    (user-error "`nerd-icons-multimodal-mode' don't support `%S'" major-mode)))
 
 (defun nerd-icons-multimodal--turn-on ()
   (when (nerd-icons-multimodal--supported-mode-p)
