@@ -200,8 +200,10 @@ Currently supporting `dired', `arc-mode' and `tar-mode'."
 (defun nerd-icons-multimodal-refresh ()
   "Refresh the icons in the current buffer."
   (interactive)
-  (if (and nerd-icons-multimodal-mode (nerd-icons-multimodal--supported-mode-p))
-      (nerd-icons-multimodal--refresh)
+  (if (nerd-icons-multimodal--supported-mode-p)
+      (if nerd-icons-multimodal-mode
+          (nerd-icons-multimodal--refresh)
+        (user-error "`nerd-icons-multimodal-mode' isn't enabled in the current buffer"))
     (user-error "Not in a supported major-mode")))
 
 ;;;###autoload
