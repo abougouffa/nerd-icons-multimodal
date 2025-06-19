@@ -134,7 +134,8 @@ Currently supporting `dired', `arc-mode' and `tar-mode'."
 
 (defun nerd-icons-multimodal--refresh ()
   "Display the icons of files in a archive buffer."
-  (when (nerd-icons-multimodal--generic-p)
+  (cond
+   ((nerd-icons-multimodal--generic-p)
     (nerd-icons-multimodal--remove-all-overlays)
     (when nerd-icons-multimodal-mode
       (save-excursion
@@ -158,7 +159,9 @@ Currently supporting `dired', `arc-mode' and `tar-mode'."
                       (inhibit-read-only t))
                   (nerd-icons-multimodal--add-overlay (nerd-icons-multimodal--call 'move-to-filename) (concat icon "\t"))))
               (setq prev-name name))
-            (nerd-icons-multimodal--call 'next-line 1)))))))
+            (nerd-icons-multimodal--call 'next-line 1))))))
+   ((eq major-mode 'ztree-mode)
+    (ztree-refresh-buffer))))
 
 (defun nerd-icons-multimodal--ztree-insert-single-entry-advice (fn short-name depth expandable expanded offset count-children &optional face)
   (let* ((empty-short-name (string-empty-p short-name))
